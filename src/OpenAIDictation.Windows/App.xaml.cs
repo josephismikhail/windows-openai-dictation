@@ -53,9 +53,9 @@ public partial class App:System.Windows.Application
         }
         if(e.Args.Contains("--quit")){Shutdown();return;}
         overlay=OverlayWindow.CreateFresh(null,()=>_ = StopAsync(),Cancel);
-        tray=new System.Windows.Forms.NotifyIcon{Icon=System.Drawing.SystemIcons.Application,Text="OpenAI Dictation — Win+H",Visible=true};
-        var menu=new System.Windows.Forms.ContextMenuStrip();menu.Items.Add("Settings",null,(_,_)=>Dispatcher.Invoke(ShowSettings));menu.Items.Add("Start / stop  Win+H",null,(_,_)=>Dispatcher.Invoke(Toggle));menu.Items.Add("Recover last text",null,(_,_)=>Dispatcher.Invoke(RecoverText));menu.Items.Add("Quit",null,(_,_)=>Dispatcher.Invoke(()=>Shutdown()));tray.ContextMenuStrip=menu;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(ShowSettings);
-        try{shortcut=new GlobalShortcut{Active=()=>current!=null || overlay?.IsVisible==true};shortcut.Toggle+=()=>Dispatcher.BeginInvoke(Toggle);shortcut.Cancel+=()=>Dispatcher.BeginInvoke(Cancel);}catch{ShowError("Win+H could not be registered. Restart the app and try again.");}
+        tray=new System.Windows.Forms.NotifyIcon{Icon=System.Drawing.SystemIcons.Application,Text="OpenAI Dictation — Ctrl+Alt+Space",Visible=true};
+        var menu=new System.Windows.Forms.ContextMenuStrip();menu.Items.Add("Settings",null,(_,_)=>Dispatcher.Invoke(ShowSettings));menu.Items.Add("Start / stop  Ctrl+Alt+Space",null,(_,_)=>Dispatcher.Invoke(Toggle));menu.Items.Add("Recover last text",null,(_,_)=>Dispatcher.Invoke(RecoverText));menu.Items.Add("Quit",null,(_,_)=>Dispatcher.Invoke(()=>Shutdown()));tray.ContextMenuStrip=menu;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(ShowSettings);
+        try{shortcut=new GlobalShortcut{Active=()=>current!=null || overlay?.IsVisible==true};shortcut.Toggle+=()=>Dispatcher.BeginInvoke(Toggle);shortcut.Cancel+=()=>Dispatcher.BeginInvoke(Cancel);}catch{ShowError("Ctrl+Alt+Space could not be registered. Restart the app and try again.");}
         _=ListenAsync(lifetime.Token);
         if(e.Args.Contains("--preview"))Preview();else if(e.Args.Contains("--toggle"))Toggle();else if(e.Args.Contains("--settings") || !LocalStore.HasKey)ShowSettings();
     }
@@ -78,11 +78,19 @@ public partial class App:System.Windows.Application
         settings=new SettingsWindow();settings.Closed+=(_,_)=>settings=null;settings.Show();settings.Activate();
     }
     private void Toggle(){if(current==null)Begin();else if(!current.Processing)_=StopAsync();}
-    private void RecoverText()
+    private void RecoverText()=>ShowRecovery("Select and copy your dictation, or use Copy text.");
+    private void ShowRecovery(string message)
     {
         if(string.IsNullOrEmpty(recoveryText)){ShowError("There is no unsaved text to recover.");return;}
-        var text=new System.Windows.Controls.TextBox{Text=recoveryText,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto,Margin=new Thickness(12),IsReadOnly=true};
-        new Window{Title="Recover dictation — select and copy",Width=600,Height=350,Content=text,WindowStartupLocation=WindowStartupLocation.CenterScreen}.Show();
+        var saved=recoveryText;
+        var panel=new System.Windows.Controls.DockPanel{Margin=new Thickness(12)};
+        var status=new System.Windows.Controls.TextBlock{Text=message,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12)};
+        System.Windows.Controls.DockPanel.SetDock(status,System.Windows.Controls.Dock.Top);panel.Children.Add(status);
+        var copy=new System.Windows.Controls.Button{Content="Copy text",Padding=new Thickness(16,6,16,6),Margin=new Thickness(0,12,0,0),HorizontalAlignment=HorizontalAlignment.Right};
+        copy.Click+=(_,_)=>{try{System.Windows.Clipboard.SetText(saved);status.Text="Copied. Paste into the text field you want.";}catch{status.Text="Copy was unavailable. Select the text below and press Ctrl+C.";}};
+        System.Windows.Controls.DockPanel.SetDock(copy,System.Windows.Controls.Dock.Bottom);panel.Children.Add(copy);
+        panel.Children.Add(new System.Windows.Controls.TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto,IsReadOnly=true});
+        new Window{Title="Recover dictation",Width=640,Height=400,Content=panel,WindowStartupLocation=WindowStartupLocation.CenterScreen}.Show();
     }
     private void Begin()
     {
@@ -161,17 +169,28 @@ public partial class App:System.Windows.Application
             var cleaned=await client.CleanupAsync(raw,session.Key,session.Options,session.Cancel.Token);
             recovery=cleaned.Text;
             if(current!=session || session.Cancel.IsCancellationRequested)return;
+            recoveryText=cleaned.Text;
             session.Stage=DictationStage.Insertion;
             // Remove the full-screen UI before checking the editor's final focus.
-            // Do not activate a destination: a real app switch must still reject insertion.
+            // Restoration is limited to the captured editor with unchanged contents.
             overlay.Hide();
             await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Input);
             if(current!=session || session.Cancel.IsCancellationRequested)return;
             await TextInserter.InsertAsync(session.Focus,cleaned.Text,session.Cancel.Token);
-            if(current==session){current=null;recoveryText="";overlay.Hide();}
+            if(current==session){current=null;overlay.Hide();}
         }
         catch(NoSpeechDetectedException){if(current==session)Cancel();}
-        catch(OperationCanceledException){}catch(Exception ex){if(current==session && recovery.Length>0)recoveryText=recovery;Fail(session,DictationFailure.Describe(ex,session.Stage)+(recovery.Length>0?" Use the tray's Recover last text menu to copy the transcript.":""),ex);}
+        catch(OperationCanceledException){}
+        catch(Exception ex)
+        {
+            if(current==session && recovery.Length>0)
+            {
+                recoveryText=recovery;
+                string message=DictationFailure.Describe(ex,session.Stage);
+                DictationFailure.Save(session.Stage,message,ex);Cancel();ShowRecovery(message+" Your text is preserved below.");
+            }
+            else Fail(session,DictationFailure.Describe(ex,session.Stage),ex);
+        }
         finally{await DisposeSession(session);}
     }
     private void Cancel()

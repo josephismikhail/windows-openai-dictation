@@ -69,7 +69,7 @@ internal static class TextInserter
         ct.ThrowIfCancellationRequested();
         for(int i=0;i<40 && ModifiersDown();i++)await Task.Delay(50,ct);
         if(ModifiersDown())throw new InvalidOperationException("Release the shortcut keys before inserting text.");
-        if(!target.IsCurrent())throw new InvalidOperationException("The text field changed. Dictation was not inserted.");
+        if(!await target.RestoreIfUnchangedAsync(ct))throw new InvalidOperationException("The original text field could not be restored. Your dictation is available to copy.");
         System.Windows.IDataObject? old=null;
         uint ownSequence=0;
         bool changed=false;

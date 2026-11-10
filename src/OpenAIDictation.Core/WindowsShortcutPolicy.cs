@@ -1,7 +1,7 @@
 namespace OpenAIDictation.Core;
 
 [Flags]
-public enum ShortcutAction { None = 0, Consume = 1, Toggle = 2, Cancel = 4, MaskWindowsRelease = 8 }
+public enum ShortcutAction { None = 0, Consume = 1, Toggle = 2, Cancel = 4 }
 
 public readonly record struct ShortcutEvent(int VirtualKey, bool IsDown, bool IsInjected,
     bool WindowsDown, bool ControlDown, bool AltDown, bool ShiftDown, bool SessionActive);
@@ -9,28 +9,29 @@ public readonly record struct ShortcutEvent(int VirtualKey, bool IsDown, bool Is
 /// <summary>Pure decision logic for the low-level hook. Never records or retains typed text.</summary>
 public sealed class WindowsShortcutPolicy
 {
-    private bool _hHeld, _escapeHeld, _maskWindowsRelease;
+    private bool _spaceDown, _spaceCaptured, _escapeHeld;
 
     public ShortcutAction Process(ShortcutEvent input)
     {
         if (input.IsInjected) return ShortcutAction.None;
-        if (input.VirtualKey == 0x48) // H
+        if (input.VirtualKey == 0x20) // Space
         {
             if (input.IsDown)
             {
-                if (_hHeld) return ShortcutAction.Consume;
-                if (input.WindowsDown && !input.ControlDown && !input.AltDown && !input.ShiftDown)
+                if (_spaceDown) return _spaceCaptured ? ShortcutAction.Consume : ShortcutAction.None;
+                _spaceDown = true;
+                if (!input.WindowsDown && input.ControlDown && input.AltDown && !input.ShiftDown)
                 {
-                    _hHeld = true; _maskWindowsRelease = true;
+                    _spaceCaptured = true;
                     return ShortcutAction.Consume | ShortcutAction.Toggle;
                 }
             }
-            else if (_hHeld) { _hHeld = false; return ShortcutAction.Consume; }
-        }
-        if (!input.IsDown && input.VirtualKey is 0x5B or 0x5C && _maskWindowsRelease)
-        {
-            _maskWindowsRelease = false;
-            return ShortcutAction.Consume | ShortcutAction.MaskWindowsRelease;
+            else
+            {
+                _spaceDown = false;
+                bool captured = _spaceCaptured; _spaceCaptured = false;
+                return captured ? ShortcutAction.Consume : ShortcutAction.None;
+            }
         }
         if (input.VirtualKey == 0x1B) // Escape: keep its matching release out of the editor after cancellation.
         {

@@ -48,7 +48,7 @@ $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut((Join-Path $startup 'OpenAI Dictation.lnk'))
 $link.TargetPath = $exe
 $link.WorkingDirectory = $app
-$link.Description = 'Win+H OpenAI dictation'
+$link.Description = 'Ctrl+Alt+Space OpenAI dictation'
 $link.Save()
 Start-Process -FilePath $exe -WorkingDirectory $app -WindowStyle Hidden
 Write-Output "Installed OpenAI Dictation to $app"

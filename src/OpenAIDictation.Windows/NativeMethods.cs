@@ -47,7 +47,7 @@ internal sealed class GlobalShortcut : IDisposable
     {
         callback=Handle;
         hook=NativeMethods.SetWindowsHookEx(13,callback,NativeMethods.GetModuleHandle(null),0);
-        if(hook==0)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"Could not register Win+H.");
+        if(hook==0)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"Could not register Ctrl+Alt+Space.");
     }
     private nint Handle(int code,nint wp,nint lp)
     {
@@ -59,14 +59,6 @@ internal sealed class GlobalShortcut : IDisposable
             NativeMethods.Down(0x5B)||NativeMethods.Down(0x5C),NativeMethods.Down(0x11),NativeMethods.Down(0x12),NativeMethods.Down(0x10),Active?.Invoke()==true));
         if(action.HasFlag(ShortcutAction.Toggle))Toggle?.Invoke();
         if(action.HasFlag(ShortcutAction.Cancel))Cancel?.Invoke();
-        if(action.HasFlag(ShortcutAction.MaskWindowsRelease))
-        {
-            // Unassigned VK_E8 masks the Start menu without changing a physically
-            // held modifier; replay Win-up so Windows cannot leave it stuck down.
-            NativeMethods.Input[] mask=[NativeMethods.Key(0xE8),NativeMethods.Key(0xE8,true),NativeMethods.Key((ushort)data.Key,true)];
-            if(NativeMethods.SendInput((uint)mask.Length,mask,Marshal.SizeOf<NativeMethods.Input>())==mask.Length)return 1;
-            return NativeMethods.CallNextHookEx(hook,code,wp,lp);
-        }
         if(action.HasFlag(ShortcutAction.Consume))return 1;
         return NativeMethods.CallNextHookEx(hook,code,wp,lp);
     }

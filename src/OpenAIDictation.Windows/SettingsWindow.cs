@@ -13,7 +13,7 @@ internal sealed class SettingsWindow:Window
         Background=new SolidColorBrush(Color.FromRgb(30,30,32));Foreground=Brushes.White;
         var root=new StackPanel{Margin=new Thickness(24)};Content=new ScrollViewer{Content=root,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
         root.Children.Add(new TextBlock{Text="OpenAI Dictation",FontSize=24,FontWeight=FontWeights.SemiBold});
-        root.Children.Add(new TextBlock{Text="Win+H starts and stops. Escape cancels. Audio goes directly to OpenAI.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,20)});
+        root.Children.Add(new TextBlock{Text="Ctrl+Alt+Space starts and stops. Escape cancels. Audio goes directly to OpenAI.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,20)});
         root.Children.Add(new TextBlock{Text="OpenAI API key (leave blank to keep the saved key)"});
         var key=new PasswordBox{Margin=new Thickness(0,8,0,18),Padding=new Thickness(8)};root.Children.Add(key);
         DictationOptions saved=LocalStore.LoadOptions();
@@ -28,7 +28,7 @@ internal sealed class SettingsWindow:Window
             try
             {
                 if(!string.IsNullOrWhiteSpace(key.Password))LocalStore.SaveKey(key.Password);
-                LocalStore.SaveOptions(saved with{Vocabulary=vocabulary.Text,Instructions=instructions.Text});key.Clear();status.Text="Saved. Press Win+H in a text field to dictate.";
+                LocalStore.SaveOptions(saved with{Vocabulary=vocabulary.Text,Instructions=instructions.Text});key.Clear();status.Text="Saved. Press Ctrl+Alt+Space in a text field to dictate.";
             }
             catch(Exception error){status.Text=error is ArgumentException?error.Message:"Could not save these settings.";}
         };

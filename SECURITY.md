@@ -20,7 +20,9 @@ OpenAI receives the audio and cleanup inputs. Its account terms and retention po
 
 ## Keyboard and clipboard
 
-The app registers a global keyboard hook for Win+H, and Escape while a session is active. It must not log ordinary keystrokes. Insertion requires the original destination window to remain valid and active. The app never synthesizes an Enter key or sends messages.
+The app registers a global keyboard hook for Ctrl+Alt+Space, and Escape while a session is active. It must not log ordinary keystrokes. Insertion requires the captured destination window and field to be active. If focus moved, the app attempts to restore only the original field and selection, verifying its process/runtime identity, editable state, and unchanged contents. Unknown or read-only providers, changed text, unavailable fields, or denied foreground activation go to recovery. The app never synthesizes an Enter key or sends messages.
+
+To verify a returning editor, the app may read up to 200,001 characters locally through Windows UI Automation and retains only a SHA-256 fingerprint plus the original selection range for that session. Fields exceeding 200,000 characters are not restored automatically. This editor content and fingerprint are not included in OpenAI requests, written to logs, or persisted. Unsupported providers keep ordinary same-field insertion available; when focus has changed, their transcript is shown in a local recovery window instead.
 
 Paste temporarily puts cleaned text on the clipboard. The previous clipboard is restored if the app still owns the temporary value; a new clipboard value must not be overwritten. Clipboard managers and Windows history operate independently of this application.
 

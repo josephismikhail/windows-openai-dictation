@@ -1,19 +1,19 @@
 # Windows OpenAI Dictation
 
-A small native Windows app for **Win+H dictation with OpenAI transcription and cleanup**. It dims the active monitor with the Pixel-style voice animation while you speak, then pastes the cleaned text into the app you started from.
+A small native Windows app for **Ctrl+Alt+Space dictation with OpenAI transcription and cleanup**. It dims the active monitor with the Pixel-style voice animation while you speak, then pastes the cleaned text into the app you started from.
 
 This is an independent project, inspired by Handy's minimal recording interface. It is not affiliated with Handy, Microsoft, or OpenAI.
 
 ## What it does
 
-1. Place the cursor in a text field and press **Win+H**.
+1. Place the cursor in a text field and press **Ctrl+Alt+Space**.
 2. Once the microphone is listening, that monitor dims behind a centered white waveform. Speak naturally; pauses do not stop recording. There is no start sound.
-3. Press **Win+H** again to finish. The waveform contracts into the same breathing rounded shape used on the Pixel.
+3. Press **Ctrl+Alt+Space** again to finish. The waveform contracts into the same breathing rounded shape used on the Pixel.
 4. The app cleans up the transcript and pastes the result. The full-screen view disappears.
 
 Click anywhere on the recording view to finish, or press **Escape** to cancel recording or processing. There is no visible cancel button. The tray menu opens settings or exits the app. The microphone opens only during a recording; there is no always-listening mode.
 
-Recordings stop automatically at ten minutes. If cleanup or insertion fails after a transcript is available, choose **Recover last text** in the tray menu to copy it. Recovery is held only in memory and disappears when the app exits or a later dictation succeeds.
+Recordings stop automatically at ten minutes. If cleanup or insertion fails after a transcript is available, a recovery window opens automatically with your text and a **Copy text** button. You can also reopen the latest result through **Recover last text** in the tray menu, including after a successful paste. The latest transcript is held only in memory until replaced by a later result or the app exits; an already-open recovery window retains its displayed text until closed.
 
 Cleanup removes filler words, applies explicit spoken corrections, and formats punctuation and lists. Add preferred names and spellings in settings. Like any speech model, it can make mistakes: review text before sending it. Dictation does not press Send or submit forms.
 
@@ -38,7 +38,7 @@ dotnet publish src/OpenAIDictation.Windows -c Release -r win-x64 --self-containe
 
 The installer places the app under `%LOCALAPPDATA%\OpenAIDictation\app` and adds a per-user startup shortcut. It does not require administrator access.
 
-If your existing Handy helper already captures Win+H, use `./scripts/install.ps1 -ReplaceHandy`. This stops that specific helper and backs up its startup shortcut. It leaves the Handy installation available for rollback. Avoid running two apps that intercept the same shortcut.
+If you are retiring the previous Handy helper, use `./scripts/install.ps1 -ReplaceHandy`. This stops that specific helper and backs up its startup shortcut. It leaves the Handy installation available for rollback. Avoid running two apps that intercept Ctrl+Alt+Space.
 
 Open **Settings** from the tray menu, enter your own API key, and save it. Keys are encrypted using Windows DPAPI for the current account at `%LOCALAPPDATA%\OpenAIDictation\credential.dpapi`. The key is never included in source code or a release binary.
 
@@ -46,7 +46,7 @@ Open **Settings** from the tray menu, enter your own API key, and save it. Keys 
 
 The active monitor is covered by an 80% black translucent layer, leaving its contents visible without blur. Other monitors are unchanged. The overlay finishes its initial layout before appearing to avoid a partial-screen flash. The centered white waveform uses the Pixel's 49 bars, microphone-level mapping, history, and smoothing, enlarged for a desktop display. When recording stops, it contracts over 450 ms into a large, gently breathing rounded processing shape. The view dismisses immediately before the app checks the destination and inserts the text.
 
-The overlay does not activate or take keyboard focus from the original editor. The existing insertion-target checks still apply. Escape cancels; the same Win+H shortcut starts and stops recording. Reduced system animations use a static processing shape. There are no routine status labels, start sounds, or visible cancel controls.
+The overlay does not activate or take keyboard focus from the original editor. The existing insertion-target checks still apply. Escape cancels; the same Ctrl+Alt+Space shortcut starts and stops recording. Reduced system animations use a static processing shape. There are no routine status labels, start sounds, or visible cancel controls.
 
 Errors show a complete safe explanation. Escape or a click dismisses the error view; it also closes automatically after 20 seconds unless replaced by a new recording.
 
@@ -77,9 +77,9 @@ The microphone permission, networking, global shortcut, and clipboard behavior a
 
 ## Limits
 
-- This app replaces Windows' normal Win+H behavior while it is running. Exit it to release the shortcut.
+- This app captures Ctrl+Alt+Space while it is running. Exit it to release the shortcut. Win+H is left available for Windows' built-in dictation.
 - Text insertion depends on the destination accepting a standard paste. Elevated apps, games, protected fields, remote desktops, and custom editors may restrict automation.
-- It verifies the destination before pasting; if you switch apps, it should refuse to paste into a different window.
+- If you switch apps while dictating, it attempts to return to the original text field and selection. This requires the original window and field to still exist and their contents to be unchanged. Unsupported editors, changed text, closed windows, or denied focus restoration open recovery instead of pasting into another field.
 - Clipboard contents are copied before pasting. If a format cannot be safely preserved, the app leaves the clipboard alone and makes the result available through **Recover last text**.
 - The cleanup model can change meaning or miss names despite instructions. Vocabulary hints improve recognition but cannot guarantee perfect spelling.
 - Availability, latency, and charges depend on the API models and your account. Ultrafast is a requested service tier, not an application-level speed guarantee.

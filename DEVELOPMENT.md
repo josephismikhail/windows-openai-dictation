@@ -10,6 +10,8 @@
 
 The application uses the Windows SDK interfaces exposed by .NET and direct OpenAI HTTPS/WebSocket APIs. It does not depend on a browser runtime or a local model server.
 
+The low-level shortcut hook consumes only physical Ctrl+Alt+Space presses with no Windows or Shift modifier, plus their repeated presses and matching Space release. The modifier keys themselves pass through unchanged. An ordinary Space held before adding modifiers does not toggle recording. Escape consumes its matching release when canceling an active session. Injected events and the former Win+H shortcut pass through; no Windows-key release masking or synthetic key replay is needed.
+
 ## Checks
 
 ```powershell
@@ -20,7 +22,7 @@ dotnet build src/OpenAIDictation.Windows -c Release
 
 Tests must cover failure and race cases: stop before connection readiness, ordered audio delivery, mismatched transcription events, malformed/server errors, cancellation, cleanup response parsing, and clipboard/target guards where practical. No real key belongs in the test suite.
 
-Before shipping, check Win+H start/stop in Notepad, silence, Escape cancellation, settings persistence, microphone release, foreground-window changes, multiple monitors, DPI scaling, and ordinary typing while idle. Do not send any test messages. Test API calls only with an authorized local credential and synthetic speech/text.
+Before shipping, check Ctrl+Alt+Space start/stop in Notepad, silence, Escape cancellation, settings persistence, microphone release, foreground-window changes, multiple monitors, DPI scaling, and ordinary typing while idle. Do not send any test messages. Test API calls only with an authorized local credential and synthetic speech/text.
 
 ## Pixel-style full-screen interface
 
@@ -30,7 +32,7 @@ Each recording creates a fresh window/native surface and closes the previous one
 
 `PixelAudioLevel` ports the Android PCM16 RMS-to-decibel mapping without changing captured audio. The animation ports the Pixel's 49-bar history, attack/release, 450 ms contraction, and rounded breathing processing shape, enlarged for desktop screens. It uses an 80% black scrim and white foreground. No start-sound object is created; existing cue code and tests are retained as dormant functionality.
 
-On opening, the window stays transparent through its initial placement and layout. A dispatcher callback reveals it only if the presentation is still current and visible; hiding invalidates that callback. Native compositor transitions are disabled. Recording-to-processing updates reuse the same monitor and visible surface. Before insertion the overlay hides and yields, then the existing focus guards run without forcing activation. `NoSpeechDetectedException` represents a silent completed recording and dismisses without an error view; other failures retain their normal handling.
+On opening, the window stays transparent through its initial placement and layout. A dispatcher callback reveals it only if the presentation is still current and visible; hiding invalidates that callback. Native compositor transitions are disabled. Recording-to-processing updates reuse the same monitor and visible surface. Before insertion the overlay hides and yields. `FocusSnapshot` can return to the captured UIA field and selection if its process, runtime identity, and bounded content fingerprint are unchanged. Windows must allow foreground activation; there is no forced thread attachment or paste to an arbitrary newly focused field. The normal focus checks still run immediately before clipboard modification and paste. An unavailable target opens an in-memory recovery window automatically. `NoSpeechDetectedException` represents a silent completed recording and dismisses without an error view.
 
 The normal audio-mute lease remains: playback mutes while the microphone captures and restores when capture stops. Credentials, transcription, cleanup, and safe clipboard restoration are unchanged. The synthetic preview uses no microphone or API and can be canceled with Escape without reappearing later.
 
